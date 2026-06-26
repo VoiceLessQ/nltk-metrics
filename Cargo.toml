@@ -1,0 +1,13 @@
+[package]
+name = "nltk-metrics"
+version = "0.1.0"
+edition = "2021"
+description = "Rust port of NLTK's metrics: string distance metrics and inter-annotator agreement coefficients"
+license = "Apache-2.0"
+repository = "https://github.com/VoiceLessQ/nltk-metrics"
+readme = "README.md"
+keywords = ["nlp", "edit-distance", "jaro-winkler", "agreement", "kappa"]
+categories = ["text-processing", "algorithms"]
+publish = false
+
+[dependencies]
