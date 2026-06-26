@@ -23,6 +23,7 @@ from nltk.metrics.distance import (
     jaro_similarity,
     jaro_winkler_similarity,
 )
+from nltk.metrics.association import BigramAssocMeasures
 from nltk.metrics.scores import accuracy, f_measure, precision, recall
 
 random.seed(20260626)
@@ -168,9 +169,58 @@ def check_scores(binary):
     return mismatches
 
 
+def close_rel(a, b):
+    return abs(a - b) <= 1e-9 * max(1.0, abs(a), abs(b))
+
+
+def check_association(binary):
+    B = BigramAssocMeasures
+    measures = [
+        lambda m: B.raw_freq(*m),
+        lambda m: B.student_t(*m),
+        lambda m: B.pmi(*m),
+        lambda m: B.mi_like(*m),
+        lambda m: B.poisson_stirling(*m),
+        lambda m: B.chi_sq(*m),
+        lambda m: B.phi_sq(*m),
+        lambda m: B.likelihood_ratio(*m),
+        lambda m: B.jaccard(*m),
+        lambda m: B.dice(*m),
+    ]
+
+    lines, expected = [], []
+    for _ in range(20000):
+        # Random valid contingency cells (>= 1 avoids any zero denominators / log(0)).
+        a, b, c, d = (random.randint(1, 60) for _ in range(4))
+        n_ii, n_ix, n_xi, n_xx = a, b + a, c + a, a + b + c + d
+        marginals = (n_ii, (n_ix, n_xi), n_xx)
+        lines.append(f"{n_ii} {n_ix} {n_xi} {n_xx}")
+        expected.append([fn(marginals) for fn in measures])
+
+    out = run(binary, "association", "\n".join(lines) + "\n")
+    if len(out) != len(lines):
+        sys.exit(f"association output line count {len(out)} != input {len(lines)}")
+
+    mismatches = 0
+    for i, line in enumerate(out):
+        got = [float(x) for x in line.split()]
+        for g, e in zip(got, expected[i]):
+            if not close_rel(g, e):
+                mismatches += 1
+                if mismatches <= 15:
+                    print(f"  association #{i} {lines[i]}: nltk={e!r} diff={g!r}")
+    print(f"association: {len(lines)} cases, {mismatches} measure mismatches")
+    return mismatches
+
+
 def main():
     binary = find_binary()
-    total = check_distance(binary) + check_agreement(binary) + check_scores(binary)
+    total = (
+        check_distance(binary)
+        + check_agreement(binary)
+        + check_scores(binary)
+        + check_association(binary)
+    )
     if total:
         sys.exit(1)
     print("ALL MATCH")

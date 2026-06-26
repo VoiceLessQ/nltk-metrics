@@ -6,11 +6,13 @@
 //!   `coder item label` lines -> `avg_ao s pi kappa multi_kappa alpha weighted_kappa`.
 //! - `diff scores`: per-line, `acc<TAB>a<TAB>b` -> `accuracy`, or
 //!   `set<TAB>alpha<TAB>a<TAB>b` -> `precision recall f_measure` (NA for None).
+//! - `diff association`: per-line `n_ii n_ix n_xi n_xx` -> the 10 bigram measures.
 
 use std::collections::HashSet;
 use std::io::{self, Read, Write};
 
 use nltk_metrics::agreement::AnnotationTask;
+use nltk_metrics::association::BigramMarginals;
 use nltk_metrics::distance::{edit_distance, jaro_similarity, jaro_winkler_similarity};
 use nltk_metrics::scores::{accuracy, f_measure, precision, recall};
 
@@ -96,8 +98,37 @@ fn main() {
                 }
             }
         }
+        "association" => {
+            for line in input.lines() {
+                let v: Vec<f64> = line.split_whitespace().filter_map(|x| x.parse().ok()).collect();
+                if v.len() != 4 {
+                    continue;
+                }
+                let m = BigramMarginals {
+                    n_ii: v[0],
+                    n_ix: v[1],
+                    n_xi: v[2],
+                    n_xx: v[3],
+                };
+                writeln!(
+                    out,
+                    "{:.12e} {:.12e} {:.12e} {:.12e} {:.12e} {:.12e} {:.12e} {:.12e} {:.12e} {:.12e}",
+                    m.raw_freq(),
+                    m.student_t(),
+                    m.pmi(),
+                    m.mi_like(3.0),
+                    m.poisson_stirling(),
+                    m.chi_sq(),
+                    m.phi_sq(),
+                    m.likelihood_ratio(),
+                    m.jaccard(),
+                    m.dice()
+                )
+                .unwrap();
+            }
+        }
         _ => {
-            eprintln!("usage: diff <distance|agreement|scores>");
+            eprintln!("usage: diff <distance|agreement|scores|association>");
             std::process::exit(2);
         }
     }

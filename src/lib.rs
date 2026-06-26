@@ -7,10 +7,12 @@
 //!   Jaccard, MASI, ...).
 //! - [`agreement`]: inter-annotator agreement coefficients (kappa, pi, alpha, ...).
 //! - [`scores`]: scoring metrics (accuracy, precision, recall, f-measure).
+//! - [`association`]: bigram association measures (PMI, chi-square, Dice, ...).
 //!
 //! Ported from NLTK (Apache-2.0). Strings are compared by Unicode scalar value
 //! (`char`), matching Python's `str` iteration.
 
 pub mod agreement;
+pub mod association;
 pub mod distance;
 pub mod scores;
