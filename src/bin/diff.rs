@@ -7,6 +7,8 @@
 //! - `diff scores`: per-line, `acc<TAB>a<TAB>b` -> `accuracy`, or
 //!   `set<TAB>alpha<TAB>a<TAB>b` -> `precision recall f_measure` (NA for None).
 //! - `diff association`: per-line `n_ii n_ix n_xi n_xx` -> the 10 bigram measures.
+//! - `diff segmentation`: per-line `wd s1 s2 k w` | `pk ref hyp k` | `ghd ref hyp ins del shift`.
+//! - `diff spearman`: per-line `k:r,k:r,...<TAB>k:r,...` -> correlation.
 
 use std::collections::HashSet;
 use std::io::{self, Read, Write};
@@ -15,6 +17,8 @@ use nltk_metrics::agreement::AnnotationTask;
 use nltk_metrics::association::BigramMarginals;
 use nltk_metrics::distance::{edit_distance, jaro_similarity, jaro_winkler_similarity};
 use nltk_metrics::scores::{accuracy, f_measure, precision, recall};
+use nltk_metrics::segmentation::{ghd, pk, windowdiff};
+use nltk_metrics::spearman::spearman_correlation;
 
 fn main() {
     let mode = std::env::args().nth(1).unwrap_or_default();
@@ -127,8 +131,50 @@ fn main() {
                 .unwrap();
             }
         }
+        "segmentation" => {
+            for line in input.lines() {
+                let f: Vec<&str> = line.split_whitespace().collect();
+                let v = match f.first() {
+                    Some(&"wd") => windowdiff(f[1], f[2], f[3].parse().unwrap(), '1', f[4] == "1"),
+                    Some(&"pk") => {
+                        let k = if f[3] == "n" { None } else { Some(f[3].parse().unwrap()) };
+                        pk(f[1], f[2], k, '1')
+                    }
+                    Some(&"ghd") => ghd(
+                        f[1],
+                        f[2],
+                        f[3].parse().unwrap(),
+                        f[4].parse().unwrap(),
+                        f[5].parse().unwrap(),
+                        '1',
+                    ),
+                    _ => continue,
+                };
+                writeln!(out, "{v:.12e}").unwrap();
+            }
+        }
+        "spearman" => {
+            let parse = |s: &str| -> Vec<(String, f64)> {
+                s.split(',')
+                    .filter(|x| !x.is_empty())
+                    .map(|pair| {
+                        let mut kv = pair.split(':');
+                        (
+                            kv.next().unwrap().to_string(),
+                            kv.next().unwrap().parse().unwrap(),
+                        )
+                    })
+                    .collect()
+            };
+            for line in input.lines() {
+                let mut halves = line.split('\t');
+                let r1 = parse(halves.next().unwrap_or(""));
+                let r2 = parse(halves.next().unwrap_or(""));
+                writeln!(out, "{:.12e}", spearman_correlation(&r1, &r2)).unwrap();
+            }
+        }
         _ => {
-            eprintln!("usage: diff <distance|agreement|scores|association>");
+            eprintln!("usage: diff <distance|agreement|scores|association|segmentation|spearman>");
             std::process::exit(2);
         }
     }

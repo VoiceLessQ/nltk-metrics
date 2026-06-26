@@ -69,12 +69,40 @@ Measures: `raw_freq`, `student_t`, `pmi`, `mi_like`, `poisson_stirling`, `chi_sq
 `phi_sq`, `likelihood_ratio`, `jaccard`, `dice`. (NLTK's scipy-based `fisher` and the
 trigram/quadgram classes are not ported.)
 
+## segmentation
+
+Text segmentation evaluation metrics over `"0"`/`"1"` sequences:
+
+```rust
+use nltk_metrics::segmentation::*;
+
+let wd = windowdiff("000100000010", "000010000100", 3, '1', false);
+let p = pk("0100".repeat(100).as_str(), &"1".repeat(400), Some(2), '1');
+let g = ghd("1100100000", "1100010000", 1.0, 1.0, 0.5, '1');
+```
+
+Functions: `windowdiff` (Pevzner & Hearst), `pk` (Beeferman), `ghd` (generalized
+Hamming distance).
+
+## spearman
+
+Spearman rank correlation over `(key, rank)` rankings:
+
+```rust
+use nltk_metrics::spearman::*;
+
+let a = ranks_from_sequence(&["a", "b", "c"]);
+let b = ranks_from_sequence(&["c", "b", "a"]);
+assert_eq!(spearman_correlation(&a, &b), -1.0);
+```
+
+Functions: `spearman_correlation`, `ranks_from_sequence`, `ranks_from_scores`.
+
 ## Verification
 
-Differential-tested against Python `nltk` (the oracle), zero mismatches: 20,000 random
-string pairs (distance), 3,000 random annotation tasks of 7 coefficients each
-(agreement), 16,000 random cases (scores), and 20,000 random contingency tables of 10
-measures each (association).
+Differential-tested against Python `nltk` (the oracle), zero mismatches: distance
+(20,000 string pairs), agreement (3,000 tasks × 7 coefficients), scores (16,000),
+association (20,000 × 10 measures), segmentation (8,000), and spearman (8,000).
 
 Strings are compared by Unicode scalar value (`char`), matching Python's `str`.
 Ported from NLTK (Apache-2.0).

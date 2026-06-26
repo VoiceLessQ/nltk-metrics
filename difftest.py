@@ -25,6 +25,8 @@ from nltk.metrics.distance import (
 )
 from nltk.metrics.association import BigramAssocMeasures
 from nltk.metrics.scores import accuracy, f_measure, precision, recall
+from nltk.metrics.segmentation import ghd, pk, windowdiff
+from nltk.metrics.spearman import ranks_from_sequence, spearman_correlation
 
 random.seed(20260626)
 EPS = 1e-9
@@ -213,6 +215,74 @@ def check_association(binary):
     return mismatches
 
 
+def rand_seg(n):
+    return "".join(random.choice("01") for _ in range(n))
+
+
+def check_segmentation(binary):
+    lines, expected = [], []
+    for _ in range(8000):
+        n = random.randint(2, 30)
+        s1, s2 = rand_seg(n), rand_seg(n)
+        op = random.choice(["wd", "pk", "ghd"])
+        if op == "wd":
+            k = random.randint(1, n)
+            w = random.randint(0, 1)
+            lines.append(f"wd {s1} {s2} {k} {w}")
+            expected.append(windowdiff(s1, s2, k, weighted=bool(w)))
+        elif op == "pk":
+            k = random.randint(1, n)
+            lines.append(f"pk {s1} {s2} {k}")
+            expected.append(pk(s1, s2, k))
+        else:
+            ins = random.choice([1.0, 2.0, 0.5])
+            dele = random.choice([1.0, 2.0, 0.5])
+            shift = random.choice([0.5, 1.0, 2.0])
+            lines.append(f"ghd {s1} {s2} {ins} {dele} {shift}")
+            expected.append(ghd(s1, s2, ins, dele, shift))
+
+    out = run(binary, "segmentation", "\n".join(lines) + "\n")
+    if len(out) != len(lines):
+        sys.exit(f"segmentation output {len(out)} != input {len(lines)}")
+    mismatches = 0
+    for i, line in enumerate(out):
+        if not close_rel(float(line), expected[i]):
+            mismatches += 1
+            if mismatches <= 15:
+                print(f"  segmentation #{i} {lines[i]}: nltk={expected[i]!r} diff={line!r}")
+    print(f"segmentation: {len(lines)} cases, {mismatches} mismatches")
+    return mismatches
+
+
+def check_spearman(binary):
+    keys = [f"k{i}" for i in range(12)]
+    lines, expected = [], []
+    for _ in range(8000):
+        m = random.randint(1, len(keys))
+        ks = random.sample(keys, m)
+        seq1 = ks[:]
+        seq2 = ks[:]
+        random.shuffle(seq1)
+        random.shuffle(seq2)
+        r1 = list(ranks_from_sequence(seq1))
+        r2 = list(ranks_from_sequence(seq2))
+        enc = lambda r: ",".join(f"{k}:{v}" for k, v in r)
+        lines.append(enc(r1) + "\t" + enc(r2))
+        expected.append(spearman_correlation(r1, r2))
+
+    out = run(binary, "spearman", "\n".join(lines) + "\n")
+    if len(out) != len(lines):
+        sys.exit(f"spearman output {len(out)} != input {len(lines)}")
+    mismatches = 0
+    for i, line in enumerate(out):
+        if not close_rel(float(line), expected[i]):
+            mismatches += 1
+            if mismatches <= 15:
+                print(f"  spearman #{i}: nltk={expected[i]!r} diff={line!r}")
+    print(f"spearman: {len(lines)} cases, {mismatches} mismatches")
+    return mismatches
+
+
 def main():
     binary = find_binary()
     total = (
@@ -220,6 +290,8 @@ def main():
         + check_agreement(binary)
         + check_scores(binary)
         + check_association(binary)
+        + check_segmentation(binary)
+        + check_spearman(binary)
     )
     if total:
         sys.exit(1)
