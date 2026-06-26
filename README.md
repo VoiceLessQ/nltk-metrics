@@ -3,9 +3,9 @@
 A dependency-free Rust port of NLTK's `nltk.metrics`, verified differentially
 against NLTK.
 
-## Implemented
+## distance
 
-`distance` — string and set distance metrics:
+String and set distance metrics:
 
 ```rust
 use nltk_metrics::distance::*;
@@ -19,12 +19,28 @@ Functions: `edit_distance` (with substitution cost and optional transpositions),
 `binary_distance`, `jaccard_distance`, `masi_distance`, `interval_distance`,
 `jaro_similarity`, `jaro_winkler_similarity`.
 
-## In progress
+## agreement
 
-`agreement` — inter-annotator agreement coefficients (Cohen/Fleiss kappa, Scott's
-pi, Bennett's S, Krippendorff's alpha, weighted kappa). Not implemented yet.
+Inter-annotator agreement coefficients from an `AnnotationTask` of `(coder, item,
+label)` triples plus a label distance metric:
 
-## Notes
+```rust
+use nltk_metrics::agreement::AnnotationTask;
+
+let data = vec![
+    ("a".into(), "1".into(), "stat".into()),
+    ("b".into(), "1".into(), "stat".into()),
+    // ...
+];
+let task = AnnotationTask::with_binary(data);
+let k = task.kappa();      // also: avg_ao, s, pi, multi_kappa, alpha, weighted_kappa
+```
+
+## Verification
+
+Differential-tested against Python `nltk` (the oracle): 20,000 random string pairs
+for the distance metrics and 3,000 random annotation tasks (7 coefficients each) for
+agreement, zero mismatches.
 
 Strings are compared by Unicode scalar value (`char`), matching Python's `str`.
 Ported from NLTK (Apache-2.0).

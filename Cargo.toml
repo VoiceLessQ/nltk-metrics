@@ -8,6 +8,7 @@ repository = "https://github.com/VoiceLessQ/nltk-metrics"
 readme = "README.md"
 keywords = ["nlp", "edit-distance", "jaro-winkler", "agreement", "kappa"]
 categories = ["text-processing", "algorithms"]
+exclude = ["/.github", "/difftest.py", "/src/bin"]
 publish = false
 
 [dependencies]
