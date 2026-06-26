@@ -4,11 +4,15 @@
 //!   (edit distance, Damerau edit distance, Jaro, Jaro-Winkler p=0.1 max_l=4).
 //! - `diff agreement`: stdin = tasks separated by blank lines, each task a set of
 //!   `coder item label` lines -> `avg_ao s pi kappa multi_kappa alpha weighted_kappa`.
+//! - `diff scores`: per-line, `acc<TAB>a<TAB>b` -> `accuracy`, or
+//!   `set<TAB>alpha<TAB>a<TAB>b` -> `precision recall f_measure` (NA for None).
 
+use std::collections::HashSet;
 use std::io::{self, Read, Write};
 
 use nltk_metrics::agreement::AnnotationTask;
 use nltk_metrics::distance::{edit_distance, jaro_similarity, jaro_winkler_similarity};
+use nltk_metrics::scores::{accuracy, f_measure, precision, recall};
 
 fn main() {
     let mode = std::env::args().nth(1).unwrap_or_default();
@@ -65,8 +69,35 @@ fn main() {
                 .unwrap();
             }
         }
+        "scores" => {
+            let fmt = |v: Option<f64>| v.map_or_else(|| "NA".to_string(), |x| format!("{x:.12}"));
+            for line in input.lines() {
+                let mut f = line.split('\t');
+                match f.next().unwrap_or("") {
+                    "acc" => {
+                        let a: Vec<&str> = f.next().unwrap_or("").split_whitespace().collect();
+                        let b: Vec<&str> = f.next().unwrap_or("").split_whitespace().collect();
+                        writeln!(out, "{:.12}", accuracy(&a, &b)).unwrap();
+                    }
+                    "set" => {
+                        let alpha: f64 = f.next().unwrap_or("0.5").parse().unwrap();
+                        let a: HashSet<&str> = f.next().unwrap_or("").split_whitespace().collect();
+                        let b: HashSet<&str> = f.next().unwrap_or("").split_whitespace().collect();
+                        writeln!(
+                            out,
+                            "{} {} {}",
+                            fmt(precision(&a, &b)),
+                            fmt(recall(&a, &b)),
+                            fmt(f_measure(&a, &b, alpha))
+                        )
+                        .unwrap();
+                    }
+                    _ => {}
+                }
+            }
+        }
         _ => {
-            eprintln!("usage: diff <distance|agreement>");
+            eprintln!("usage: diff <distance|agreement|scores>");
             std::process::exit(2);
         }
     }

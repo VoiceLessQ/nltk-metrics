@@ -23,6 +23,7 @@ from nltk.metrics.distance import (
     jaro_similarity,
     jaro_winkler_similarity,
 )
+from nltk.metrics.scores import accuracy, f_measure, precision, recall
 
 random.seed(20260626)
 EPS = 1e-9
@@ -122,9 +123,54 @@ def check_agreement(binary):
     return mismatches
 
 
+def check_scores(binary):
+    alphabet = "abcdef"
+    kinds, lines, expected = [], [], []
+
+    # accuracy: equal-length non-empty token lists.
+    for _ in range(8000):
+        n = random.randint(1, 8)
+        ref = [random.choice(alphabet) for _ in range(n)]
+        test = [random.choice(alphabet) for _ in range(n)]
+        kinds.append("acc")
+        lines.append("acc\t" + " ".join(ref) + "\t" + " ".join(test))
+        expected.append(accuracy(ref, test))
+
+    # precision/recall/f_measure: random sets (possibly empty), random alpha.
+    for _ in range(8000):
+        ref = set(random.sample(alphabet, random.randint(0, len(alphabet))))
+        test = set(random.sample(alphabet, random.randint(0, len(alphabet))))
+        alpha = random.choice([0.1, 0.3, 0.5, 0.7, 0.9])
+        kinds.append("set")
+        lines.append(f"set\t{alpha}\t" + " ".join(ref) + "\t" + " ".join(test))
+        expected.append((precision(ref, test), recall(ref, test), f_measure(ref, test, alpha)))
+
+    out = run(binary, "scores", "\n".join(lines) + "\n")
+    if len(out) != len(lines):
+        sys.exit(f"scores output line count {len(out)} != input {len(lines)}")
+
+    def match(got_str, exp):
+        if exp is None:
+            return got_str == "NA"
+        return got_str != "NA" and close(float(got_str), float(exp))
+
+    mismatches = 0
+    for i, kind in enumerate(kinds):
+        if kind == "acc":
+            ok = close(float(out[i]), expected[i])
+        else:
+            ok = all(match(g, e) for g, e in zip(out[i].split(), expected[i]))
+        if not ok:
+            mismatches += 1
+            if mismatches <= 15:
+                print(f"  scores {kind} #{i}: nltk={expected[i]} diff={out[i]!r}")
+    print(f"scores: {len(lines)} cases, {mismatches} mismatches")
+    return mismatches
+
+
 def main():
     binary = find_binary()
-    total = check_distance(binary) + check_agreement(binary)
+    total = check_distance(binary) + check_agreement(binary) + check_scores(binary)
     if total:
         sys.exit(1)
     print("ALL MATCH")

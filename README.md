@@ -36,11 +36,28 @@ let task = AnnotationTask::with_binary(data);
 let k = task.kappa();      // also: avg_ao, s, pi, multi_kappa, alpha, weighted_kappa
 ```
 
+## scores
+
+Scoring metrics over sequences and sets:
+
+```rust
+use nltk_metrics::scores::*;
+use std::collections::HashSet;
+
+assert_eq!(accuracy(&["a", "b", "c"], &["a", "x", "c"]), 2.0 / 3.0);
+let r: HashSet<_> = ["a", "b"].into_iter().collect();
+let t: HashSet<_> = ["a", "c"].into_iter().collect();
+let f = f_measure(&r, &t, 0.5); // Option<f64>
+```
+
+Functions: `accuracy`, `precision`, `recall`, `f_measure`. (NLTK's `log_likelihood`
+and `approxrand` are not ported, see the module docs.)
+
 ## Verification
 
-Differential-tested against Python `nltk` (the oracle): 20,000 random string pairs
-for the distance metrics and 3,000 random annotation tasks (7 coefficients each) for
-agreement, zero mismatches.
+Differential-tested against Python `nltk` (the oracle), zero mismatches: 20,000 random
+string pairs (distance), 3,000 random annotation tasks of 7 coefficients each
+(agreement), and 16,000 random cases (scores).
 
 Strings are compared by Unicode scalar value (`char`), matching Python's `str`.
 Ported from NLTK (Apache-2.0).

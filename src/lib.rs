@@ -6,10 +6,11 @@
 //! - [`distance`]: string/set distance metrics (edit distance, Jaro/Jaro-Winkler,
 //!   Jaccard, MASI, ...).
 //! - [`agreement`]: inter-annotator agreement coefficients (kappa, pi, alpha, ...).
-//!   *(in progress)*
+//! - [`scores`]: scoring metrics (accuracy, precision, recall, f-measure).
 //!
 //! Ported from NLTK (Apache-2.0). Strings are compared by Unicode scalar value
 //! (`char`), matching Python's `str` iteration.
 
 pub mod agreement;
 pub mod distance;
+pub mod scores;
